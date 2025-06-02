@@ -404,7 +404,7 @@
         // 실제 CSV 파일을 사용하려면 위의 loadData() 함수를 다음과 같이 변경:
         
         function loadData() {
-            d3.csv("data/nba_24_25.csv").then(data => {
+            d3.csv("https://ilwoong100.github.io/infovis_nba_stat/data/nba_24_25.csv").then(data => {
                 rawData = data.map(d => ({
                     ...d,
                     PTS: +d.PTS,
