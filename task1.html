@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NBA 포지션별 평균 득점 비교 - D3.js</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <script src="data/nba_24_25.js"></script> 
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -405,10 +404,8 @@
         // 실제 CSV 파일을 사용하려면 위의 loadData() 함수를 다음과 같이 변경:
         
         function loadData() {
-            // D3 CSV 로드 대신 직접 데이터 사용
-            const data = window.nba_data; // nba_24_25.js에서 로드된 데이터
-            console.log(data);
-            rawData = data.map(d => ({
+            d3.csv("https://ilwoong100.github.io/infovis_nba_stat/data/nba_24_25.csv").then(data => {
+                rawData = data.map(d => ({
                     ...d,
                     PTS: +d.PTS,
                     G: +d.G,
@@ -416,7 +413,9 @@
                 })).filter(d => d.Pos && d.PTS > 0 && d.G > 0);
             
                 updateChart('all');
-
+            }).catch(error => {
+                console.error("CSV 로드 실패:", error);
+            });
         }
         
     </script>

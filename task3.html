@@ -772,7 +772,7 @@
         loadData();
 
         function loadData() {
-            d3.csv("data/nba_24_25.csv").then(data => {
+            d3.csv("https://ilwoong100.github.io/infovis_nba_stat/data/nba_24_25.csv").then(data => {
                 allPlayers = data.map(d => ({
                     ...d,
                     PTS: +d.PTS,
