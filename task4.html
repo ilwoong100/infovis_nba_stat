@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NBA 상대 라인업 기반 최적 라인업 추천</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="data/nba_24_25.js"></script> 
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -1081,8 +1082,9 @@
         loadData();
 
         function loadData() {
-            d3.csv("data/nba_24_25.csv").then(data => {
-            allPlayers = data.map(d => ({
+            // D3 CSV 로드 대신 직접 데이터 사용
+            const data = window.nba_data; // nba_24_25.js에서 로드된 데이터
+            rawData = data.map(d => ({
                 ...d,
                 PTS: +d.PTS,
                 G: +d.G,
@@ -1109,9 +1111,7 @@
             console.log("Loaded players:", allPlayers.length);
             
             setupSelectors();
-            }).catch(error => {
-                console.error("CSV 로드 실패:", error);
-            });
+
         }
     </script>
 </body>
