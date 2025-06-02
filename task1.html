@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA 포지션별 평균 득점 비교 - D3.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        select {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .chart-container {
+            width: 100%;
+            text-align: center;
+        }
+
+        .bar {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+            stroke: #333;
+            stroke-width: 2;
+        }
+
+        .axis {
+            font-size: 12px;
+        }
+
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #333;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .legend {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        .value-label {
+            font-size: 12px;
+            fill: #333;
+            font-weight: bold;
+        }
+
+        .grid line {
+            stroke: lightgrey;
+            stroke-opacity: 0.7;
+            shape-rendering: crispEdges;
+        }
+
+        .grid path {
+            stroke-width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏀 NBA 24-25 시즌 포지션별 평균 득점 비교</h1>
+        
+        <div class="controls">
+            <label for="positionSelect">포지션 선택: </label>
+            <select id="positionSelect">
+                <option value="all">전체 포지션</option>
+                <option value="PG">포인트 가드 (PG)</option>
+                <option value="SG">슈팅 가드 (SG)</option>
+                <option value="SF">스몰 포워드 (SF)</option>
+                <option value="PF">파워 포워드 (PF)</option>
+                <option value="C">센터 (C)</option>
+            </select>
+        </div>
+
+        <div class="chart-container">
+            <svg id="barChart"></svg>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #FF6B6B;"></span>
+                포인트 가드 (PG)
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #4ECDC4;"></span>
+                슈팅 가드 (SG)
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #45B7D1;"></span>
+                스몰 포워드 (SF)
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #96CEB4;"></span>
+                파워 포워드 (PF)
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #FFEAA7;"></span>
+                센터 (C)
+            </div>
+        </div>
+
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <script>
+        // D3.js 스타일 전역 변수 및 설정
+        const margin = {top: 20, right: 30, bottom: 100, left: 60};
+        const width = 900 - margin.left - margin.right;
+        const height = 500 - margin.top - margin.bottom;
+
+        // SVG 설정
+        const svg = d3.select("#barChart")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom);
+
+        const chartGroup = svg.append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // 색상 스케일 - D3 방식
+        const colorScale = d3.scaleOrdinal()
+            .domain(['PG', 'SG', 'SF', 'PF', 'C'])
+            .range(['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']);
+
+        // 툴팁 설정
+        const tooltip = d3.select("#tooltip");
+
+        // 스케일 정의
+        let xScale, yScale;
+
+        // 전역 데이터 변수
+        let rawData = [];
+
+        // 샘플 데이터 (실제 환경에서는 CSV 파일로 대체)
+      
+
+ 
+
+        // D3.js 스타일 데이터 그룹핑 및 처리
+        function processData(selectedPosition) {
+            if (selectedPosition === 'all') {
+                // D3의 group 사용하여 포지션별 그룹핑
+                const positionGroups = d3.group(rawData, d => d.Pos);
+                
+                // D3의 rollup을 사용한 집계
+                return Array.from(positionGroups, ([position, players]) => ({
+                    position,
+                    avgPoints: d3.mean(players, d => d.avgPTS),
+                    playerCount: players.length,
+                    topPlayer: players.reduce((a, b) => a.avgPTS > b.avgPTS ? a : b)
+                })).sort((a, b) => b.avgPoints - a.avgPoints);
+            } else {
+                // D3 방식 필터링 및 정렬
+                return rawData
+                    .filter(d => d.Pos === selectedPosition)
+                    .sort((a, b) => b.avgPTS - a.avgPTS)
+                    .slice(0, 8)
+                    .map(d => ({
+                        player: d.Player,
+                        position: d.Pos,
+                        avgPoints: d.avgPTS,
+                        team: d.Team
+                    }));
+            }
+        }
+
+        // D3.js 스타일 차트 업데이트
+        function updateChart(selectedPosition) {
+            const data = processData(selectedPosition);
+            
+            // 스케일 업데이트
+            if (selectedPosition === 'all') {
+                xScale = d3.scaleBand()
+                    .domain(data.map(d => d.position))
+                    .range([0, width])
+                    .padding(0.2);
+            } else {
+                xScale = d3.scaleBand()
+                    .domain(data.map(d => d.player))
+                    .range([0, width])
+                    .padding(0.1);
+            }
+
+            yScale = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.avgPoints) * 1.1])
+                .range([height, 0]);
+
+            // 기존 차트 요소들 제거
+            chartGroup.selectAll("*").remove();
+
+            // 그리드 라인 추가 (D3 방식)
+            chartGroup.append("g")
+                .attr("class", "grid")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(xScale)
+                    .tickSize(-height)
+                    .tickFormat("")
+                );
+
+            chartGroup.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale)
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            // D3 방식 축 생성
+            chartGroup.append("g")
+                .attr("class", "axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)")
+                .style("font-size", "11px")  // 폰트 크기 약간 줄임
+                .each(function(d) {
+                    // 긴 이름 줄임 처리
+                    const text = d3.select(this);
+                    let textContent = text.text();
+                    if (textContent.length > 15) {
+                        text.text(textContent.substring(0, 13) + "...");
+                    }
+                });
+
+            chartGroup.append("g")
+                .attr("class", "axis")
+                .call(d3.axisLeft(yScale));
+
+            // 축 레이블
+            chartGroup.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 10)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("평균 득점 (pts/game)");
+
+            // D3의 강력한 데이터 바인딩 사용
+            const bars = chartGroup.selectAll(".bar")
+                .data(data)
+                .join(  // D3 v6+ 의 join 패턴
+                    enter => enter.append("rect")
+                        .attr("class", "bar")
+                        .attr("x", d => selectedPosition === 'all' ? xScale(d.position) : xScale(d.player))
+                        .attr("width", xScale.bandwidth())
+                        .attr("y", height)
+                        .attr("height", 0)
+                        .attr("fill", d => colorScale(selectedPosition === 'all' ? d.position : d.position)),
+                    
+                    update => update
+                        .transition()
+                        .duration(750)
+                        .attr("x", d => selectedPosition === 'all' ? xScale(d.position) : xScale(d.player))
+                        .attr("width", xScale.bandwidth())
+                        .attr("y", d => yScale(d.avgPoints))
+                        .attr("height", d => height - yScale(d.avgPoints))
+                        .attr("fill", d => colorScale(selectedPosition === 'all' ? d.position : d.position)),
+                    
+                    exit => exit
+                        .transition()
+                        .duration(300)
+                        .attr("height", 0)
+                        .attr("y", height)
+                        .remove()
+                );
+
+            // 애니메이션 - D3 방식
+            bars.transition()
+                .duration(1000)
+                .delay((d, i) => i * 100)  // 순차 애니메이션
+                .attr("y", d => yScale(d.avgPoints))
+                .attr("height", d => height - yScale(d.avgPoints));
+
+            // D3 방식 이벤트 핸들링
+            bars
+                .on("mouseover", function(event, d) {
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("opacity", 0.8)
+                        .attr("stroke", "#333")
+                        .attr("stroke-width", 2);
+
+                    let tooltipText;
+                    if (selectedPosition === 'all') {
+                        tooltipText = `포지션: ${d.position}<br/>평균 득점: ${d.avgPoints.toFixed(1)} pts/game<br/>선수 수: ${d.playerCount}명<br/>최고 득점자: ${d.topPlayer.Player}`;
+                    } else {
+                        tooltipText = `선수: ${d.player}<br/>팀: ${d.team}<br/>포지션: ${d.position}<br/>평균 득점: ${d.avgPoints} pts/game`;
+                    }
+
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", 1);
+                    
+                    tooltip.html(tooltipText)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("opacity", 1)
+                        .attr("stroke", "none");
+
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", 0);
+                });
+
+            // 값 레이블 - D3 방식
+            chartGroup.selectAll(".value-label")
+                .data(data)
+                .join("text")
+                .attr("class", "value-label")
+                .attr("x", d => (selectedPosition === 'all' ? xScale(d.position) : xScale(d.player)) + xScale.bandwidth()/2)
+                .attr("y", d => yScale(d.avgPoints) - 5)
+                .attr("text-anchor", "middle")
+                .style("opacity", 0)
+                .text(d => d.avgPoints.toFixed(1))
+                .transition()
+                .duration(1000)
+                .delay((d, i) => i * 100)
+                .style("opacity", 1);
+        }
+
+        // D3 방식 이벤트 리스너
+        d3.select("#positionSelect")
+            .on("change", function() {
+                updateChart(this.value);
+            });
+
+        // 데이터 로드 및 초기화
+        loadData();
+
+        // 실제 CSV 파일을 사용하려면 위의 loadData() 함수를 다음과 같이 변경:
+        
+        function loadData() {
+            d3.csv("nba_24_25.csv").then(data => {
+                rawData = data.map(d => ({
+                    ...d,
+                    PTS: +d.PTS,
+                    G: +d.G,
+                    avgPTS: +(d.PTS / d.G).toFixed(2)
+                })).filter(d => d.Pos && d.PTS > 0 && d.G > 0);
+            
+                updateChart('all');
+            }).catch(error => {
+                console.error("CSV 로드 실패:", error);
+            });
+        }
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA 5인 라인업 분석</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 400px;
+        }
+
+        .right-panel {
+            flex: 1;
+            min-width: 600px;
+        }
+
+        .player-table {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .player-table h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            text-align: center;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .player-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .player-item:hover {
+            background: #f0f8ff;
+        }
+
+        .player-item.selected {
+            background: #e3f2fd;
+        }
+
+        .player-checkbox {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .player-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .position-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .pos-PG { background-color: #FF6B6B; }
+        .pos-SG { background-color: #4ECDC4; }
+        .pos-SF { background-color: #45B7D1; }
+        .pos-PF { background-color: #96CEB4; }
+        .pos-C { background-color: #FFEAA7; color: #333; }
+
+        .selected-lineup {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .selected-lineup h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+
+        .selected-player {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #ffeaa7;
+        }
+
+        .selected-player:last-child {
+            border-bottom: none;
+        }
+
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .radar-container {
+            text-align: center;
+        }
+
+        .radar-chart {
+            margin: 0 auto;
+        }
+
+        .analysis-panel {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .analysis-panel h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .strength-weakness {
+            display: flex;
+            gap: 20px;
+        }
+
+        .strength, .weakness {
+            flex: 1;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .strength {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .weakness {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .strength h5, .weakness h5 {
+            margin: 0 0 10px 0;
+            color: #155724;
+        }
+
+        .weakness h5 {
+            color: #721c24;
+        }
+
+        .stat-comparison {
+            margin-top: 15px;
+        }
+
+        .stat-bar {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .stat-label {
+            width: 80px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .stat-progress {
+            flex: 1;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 0 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .stat-value {
+            width: 50px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .radar-path {
+            fill: rgba(54, 162, 235, 0.2);
+            stroke: rgba(54, 162, 235, 1);
+            stroke-width: 2;
+        }
+
+        .radar-path.league-average {
+            fill: rgba(255, 99, 132, 0.1);
+            stroke: rgba(255, 99, 132, 0.8);
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+        }
+
+        .radar-axis {
+            stroke: #999;
+            stroke-width: 1;
+        }
+
+        .radar-grid {
+            stroke: #ddd;
+            stroke-width: 1;
+            fill: none;
+        }
+
+        .radar-label {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #333;
+            text-anchor: middle;
+        }
+
+        .legend {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+
+        .legend-line {
+            display: inline-block;
+            width: 20px;
+            height: 3px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        .team-avg { background-color: rgba(54, 162, 235, 1); }
+        .league-avg { 
+            background: repeating-linear-gradient(
+                90deg,
+                rgba(255, 99, 132, 0.8) 0px,
+                rgba(255, 99, 132, 0.8) 3px,
+                transparent 3px,
+                transparent 6px
+            );
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏀 NBA 5인 라인업 능력치 분석</h1>
+        
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="player-table">
+                    <h3>선수 선택 (최대 5명)</h3>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="text" class="search-box" id="playerSearch" placeholder="선수 이름 또는 팀으로 검색... (예: LeBron, LAL)" style="flex: 1;">
+                        <select id="teamSelect" style="padding: 10px; border: 2px solid #ddd; border-radius: 5px; background: white; cursor: pointer;">
+                            <option value="">팀별 상위 5명</option>
+                        </select>
+                    </div>
+                    
+                    <div class="player-list" id="playerList"></div>
+                </div>
+                
+                <div class="selected-lineup">
+                    <h4>선택된 라인업 (<span id="selectedCount">0</span>/5)</h4>
+                    <div style="margin-bottom: 10px;">
+                        <button style="padding: 5px 10px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;" onclick="clearSelection()">전체 해제</button>
+                    </div>
+                    <div id="selectedPlayers"></div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="radar-container">
+                    <h3>팀 능력치 레이더 차트</h3>
+                    <svg class="radar-chart" id="radarChart"></svg>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <span class="legend-line team-avg"></span>
+                            선택된 팀 평균
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-line league-avg"></span>
+                            전체 팀 주전5 평균 (출전시간 기준)
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="analysis-panel">
+                    <h4>📊 라인업 분석</h4>
+                    <div class="strength-weakness">
+                        <div class="strength">
+                            <h5>💪 강점</h5>
+                            <div id="strengthAnalysis">선수를 선택해주세요</div>
+                        </div>
+                        <div class="weakness">
+                            <h5>⚠️ 약점</h5>
+                            <div id="weaknessAnalysis">선수를 선택해주세요</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-comparison">
+                        <h5>전체 팀 주전5 평균 대비 능력치 (출전시간 기준)</h5>
+                        <div id="statBars"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // D3.js 스타일 전역 설정
+        const radarSize = 300;
+        const radarRadius = 120;
+        const radarCenter = radarSize / 2;
+
+        // 레이더 차트 설정
+        const svg = d3.select("#radarChart")
+            .attr("width", radarSize)
+            .attr("height", radarSize);
+
+        // 전역 변수
+        let allPlayers = [];
+        let selectedPlayers = [];
+        let filteredPlayers = [];
+
+        // 능력치 정의
+        const stats = [
+            { key: 'pts', label: '득점', max: 35 },
+            { key: 'ast', label: '어시스트', max: 12 },
+            { key: 'trb', label: '리바운드', max: 15 },
+            { key: 'stl', label: '스틸', max: 3 },
+            { key: 'blk', label: '블록', max: 3 }
+        ];
+
+        // 리그 평균 (각 팀별 베스트 5의 평균으로 계산)
+        let leagueAverage = {};
+
+        // 각 팀별 베스트 5 평균 계산 (출전시간 기준)
+        function calculateLeagueAverage() {
+            const teamGroups = d3.group(allPlayers, d => d.Team);
+            const teamAverages = [];
+            
+            // 각 팀별 출전시간 상위 5명의 평균 계산
+            Array.from(teamGroups.entries()).forEach(([team, players]) => {
+                const top5 = players
+                    .sort((a, b) => b.avgMP - a.avgMP)  // 평균 출전시간 기준으로 정렬
+                    .slice(0, 5);
+                
+                if (top5.length >= 3) {  // 최소 3명 이상인 팀만 포함
+                    const teamAvg = {
+                        team: team,
+                        pts: d3.mean(top5, d => d.pts),
+                        ast: d3.mean(top5, d => d.ast),
+                        trb: d3.mean(top5, d => d.trb),
+                        stl: d3.mean(top5, d => d.stl),
+                        blk: d3.mean(top5, d => d.blk),
+                        avgMP: d3.mean(top5, d => d.avgMP)
+                    };
+                    teamAverages.push(teamAvg);
+                }
+            });
+            
+            // 모든 팀들의 주전 5명 평균을 다시 평균내기
+            leagueAverage = {
+                pts: d3.mean(teamAverages, d => d.pts),
+                ast: d3.mean(teamAverages, d => d.ast),
+                trb: d3.mean(teamAverages, d => d.trb),
+                stl: d3.mean(teamAverages, d => d.stl),
+                blk: d3.mean(teamAverages, d => d.blk)
+            };
+            
+            console.log("팀별 주전 5명 라인업 평균 (출전시간 기준):", leagueAverage);
+            console.log("평균 출전시간:", d3.mean(teamAverages, d => d.avgMP).toFixed(1), "분");
+        }
+
+        // 색상 스케일
+        const colorScale = d3.scaleOrdinal()
+            .domain(['PG', 'SG', 'SF', 'PF', 'C'])
+            .range(['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']);
+
+
+        // 팀 선택 드롭다운 설정
+        function setupTeamSelect() {
+            // 팀별 그룹핑
+            const teamGroups = d3.group(allPlayers, d => d.Team);
+            const teams = Array.from(teamGroups.keys()).sort();
+            
+            const teamSelect = d3.select("#teamSelect");
+            
+            teamSelect.selectAll("option.team-option")
+                .data(teams)
+                .join("option")
+                .attr("class", "team-option")
+                .attr("value", d => d)
+                .text(d => `${d} (${teamGroups.get(d).length}명)`);
+                
+            // 팀 선택 이벤트
+            teamSelect.on("change", function() {
+                const selectedTeam = this.value;
+                if (selectedTeam) {
+                    selectTopPlayersFromTeam(selectedTeam);
+                }
+                // 선택 후 다시 기본값으로
+                this.value = "";
+            });
+        }
+
+        // 팀별 상위 5명 선택 (출전시간 기준)
+        function selectTopPlayersFromTeam(teamName) {
+            const teamPlayers = allPlayers
+                .filter(p => p.Team === teamName)
+                .sort((a, b) => b.avgMP - a.avgMP)  // 평균 출전시간 기준으로 정렬
+                .slice(0, 5);  // 출전시간 상위 5명
+            
+            // 기존 선택 초기화
+            selectedPlayers = [];
+            
+            // 주전 5명 선택
+            selectedPlayers = [...teamPlayers];
+            
+            updateSelectedLineup();
+            renderPlayerList();
+            updateRadarChart();
+            updateAnalysis();
+        }
+
+        // 선수 목록 렌더링
+        function renderPlayerList() {
+            const playerListEl = d3.select("#playerList");
+            
+            // D3 데이터 바인딩으로 선수 목록 생성
+            const playerItems = playerListEl.selectAll(".player-item")
+                .data(filteredPlayers)
+                .join("div")
+                .attr("class", "player-item")
+                .classed("selected", d => selectedPlayers.some(p => p.Player === d.Player));
+
+            playerItems.html(d => `
+                <input type="checkbox" class="player-checkbox" 
+                       ${selectedPlayers.some(p => p.Player === d.Player) ? 'checked' : ''}
+                       ${selectedPlayers.length >= 5 && !selectedPlayers.some(p => p.Player === d.Player) ? 'disabled' : ''}>
+                <div class="player-info">
+                    <div class="player-name">
+                        <span class="position-badge pos-${d.Pos}">${d.Pos}</span>
+                        ${d.Player}
+                    </div>
+                    <div class="player-details">
+                        ${d.Team} | ${d.pts}pts ${d.ast}ast ${d.trb}reb | ${d.avgMP}분
+                    </div>
+                </div>
+            `);
+
+            // 체크박스 이벤트
+            playerItems.select(".player-checkbox")
+                .on("change", function(event, d) {
+                    if (this.checked) {
+                        if (selectedPlayers.length < 5) {
+                            selectedPlayers.push(d);
+                        } else {
+                            this.checked = false;
+                            return;
+                        }
+                    } else {
+                        selectedPlayers = selectedPlayers.filter(p => p.Player !== d.Player);
+                    }
+                    
+                    updateSelectedLineup();
+                    renderPlayerList(); // 리렌더링
+                    updateRadarChart();
+                    updateAnalysis();
+                });
+        }
+
+        // 선택된 라인업 업데이트
+        function updateSelectedLineup() {
+            const selectedEl = d3.select("#selectedPlayers");
+            const countEl = d3.select("#selectedCount");
+            
+            countEl.text(selectedPlayers.length);
+            
+            const selectedItems = selectedEl.selectAll(".selected-player")
+                .data(selectedPlayers)
+                .join("div")
+                .attr("class", "selected-player");
+
+            selectedItems.html(d => `
+                <div>
+                    <span class="position-badge pos-${d.Pos}">${d.Pos}</span>
+                    <strong>${d.Player}</strong> (${d.Team})
+                    <span style="color: #666; font-size: 12px;">
+                        ${d.pts}pts ${d.ast}ast ${d.trb}reb
+                    </span>
+                </div>
+                <button class="remove-btn" onclick="removePlayer('${d.Player}')">×</button>
+            `);
+        }
+
+        // 선수 제거 함수
+        function removePlayer(playerName) {
+            selectedPlayers = selectedPlayers.filter(p => p.Player !== playerName);
+            updateSelectedLineup();
+            renderPlayerList();
+            updateRadarChart();
+            updateAnalysis();
+        }
+
+        // 검색 기능 (선수 이름 + 팀)
+        d3.select("#playerSearch").on("input", function() {
+            const searchTerm = this.value.toLowerCase();
+            filteredPlayers = allPlayers.filter(player => 
+                player.Player.toLowerCase().includes(searchTerm) ||
+                player.Team.toLowerCase().includes(searchTerm)
+            );
+            renderPlayerList();
+        });
+
+        // 레이더 차트 설정
+        function setupRadarChart() {
+            const chartGroup = svg.append("g")
+                .attr("transform", `translate(${radarCenter}, ${radarCenter})`);
+
+            // 그리드 원 그리기
+            const gridLevels = 5;
+            for (let i = 1; i <= gridLevels; i++) {
+                chartGroup.append("circle")
+                    .attr("class", "radar-grid")
+                    .attr("r", (radarRadius / gridLevels) * i);
+            }
+
+            // 축 그리기
+            const angleSlice = (Math.PI * 2) / stats.length;
+            
+            stats.forEach((stat, i) => {
+                const angle = angleSlice * i - Math.PI / 2;
+                const x = Math.cos(angle) * radarRadius;
+                const y = Math.sin(angle) * radarRadius;
+                
+                // 축선
+                chartGroup.append("line")
+                    .attr("class", "radar-axis")
+                    .attr("x1", 0)
+                    .attr("y1", 0)
+                    .attr("x2", x)
+                    .attr("y2", y);
+                
+                // 레이블
+                const labelX = Math.cos(angle) * (radarRadius + 20);
+                const labelY = Math.sin(angle) * (radarRadius + 20);
+                
+                chartGroup.append("text")
+                    .attr("class", "radar-label")
+                    .attr("x", labelX)
+                    .attr("y", labelY)
+                    .attr("dy", "0.35em")
+                    .text(stat.label);
+            });
+        }
+
+        // 레이더 차트 업데이트
+        function updateRadarChart() {
+            const chartGroup = svg.select("g");
+            
+            // 기존 패스 제거
+            chartGroup.selectAll(".radar-path").remove();
+            
+            if (selectedPlayers.length === 0) return;
+            
+            // 팀 평균 계산
+            const teamAverage = {
+                pts: d3.mean(selectedPlayers, d => d.pts),
+                ast: d3.mean(selectedPlayers, d => d.ast),
+                trb: d3.mean(selectedPlayers, d => d.trb),
+                stl: d3.mean(selectedPlayers, d => d.stl),
+                blk: d3.mean(selectedPlayers, d => d.blk)
+            };
+            
+            // 패스 데이터 생성 함수
+            function createPath(values) {
+                const angleSlice = (Math.PI * 2) / stats.length;
+                let pathData = "";
+                
+                stats.forEach((stat, i) => {
+                    const angle = angleSlice * i - Math.PI / 2;
+                    const value = Math.min(values[stat.key], stat.max);
+                    const radius = (value / stat.max) * radarRadius;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        pathData += `M ${x} ${y}`;
+                    } else {
+                        pathData += ` L ${x} ${y}`;
+                    }
+                });
+                
+                pathData += " Z";
+                return pathData;
+            }
+            
+            // 리그 평균 패스
+            chartGroup.append("path")
+                .attr("class", "radar-path league-average")
+                .attr("d", createPath(leagueAverage));
+            
+            // 팀 평균 패스
+            chartGroup.append("path")
+                .attr("class", "radar-path")
+                .attr("d", createPath(teamAverage))
+                .style("opacity", 0)
+                .transition()
+                .duration(1000)
+                .style("opacity", 1);
+        }
+
+        // 분석 업데이트
+        function updateAnalysis() {
+            if (selectedPlayers.length === 0) {
+                d3.select("#strengthAnalysis").text("선수를 선택해주세요");
+                d3.select("#weaknessAnalysis").text("선수를 선택해주세요");
+                d3.select("#statBars").html("");
+                return;
+            }
+            
+            // 팀 평균 계산
+            const teamAverage = {
+                pts: d3.mean(selectedPlayers, d => d.pts),
+                ast: d3.mean(selectedPlayers, d => d.ast),
+                trb: d3.mean(selectedPlayers, d => d.trb),
+                stl: d3.mean(selectedPlayers, d => d.stl),
+                blk: d3.mean(selectedPlayers, d => d.blk)
+            };
+            
+            // 전체 팀 베스트5 평균 대비 비율 계산
+            const comparisons = stats.map(stat => ({
+                ...stat,
+                teamValue: teamAverage[stat.key],
+                leagueValue: leagueAverage[stat.key],
+                ratio: teamAverage[stat.key] / leagueAverage[stat.key],
+                difference: teamAverage[stat.key] - leagueAverage[stat.key]
+            }));
+            
+            // 강점과 약점 찾기
+            const sortedByRatio = [...comparisons].sort((a, b) => b.ratio - a.ratio);
+            const strengths = sortedByRatio.slice(0, 2);
+            const weaknesses = sortedByRatio.slice(-2).reverse();
+            
+            // 강점 표시
+            const strengthText = strengths.map(s => 
+                `${s.label}: ${s.teamValue.toFixed(1)} (전체 팀 주전 평균 ${s.ratio.toFixed(1)}배)`
+            ).join('<br>');
+            d3.select("#strengthAnalysis").html(strengthText);
+            
+            // 약점 표시
+            const weaknessText = weaknesses.map(w => 
+                `${w.label}: ${w.teamValue.toFixed(1)} (전체 팀 주전 평균 ${w.ratio.toFixed(1)}배)`
+            ).join('<br>');
+            d3.select("#weaknessAnalysis").html(weaknessText);
+            
+            // 능력치 바 차트
+            const statBarsEl = d3.select("#statBars");
+            
+            const statBars = statBarsEl.selectAll(".stat-bar")
+                .data(comparisons)
+                .join("div")
+                .attr("class", "stat-bar");
+                
+            statBars.html(d => {
+                const percentage = Math.min((d.ratio * 50), 100); // 50%를 기준점으로 설정
+                const color = d.ratio > 1.2 ? '#28a745' : d.ratio > 0.8 ? '#ffc107' : '#dc3545';
+                
+                return `
+                    <div class="stat-label">${d.label}</div>
+                    <div class="stat-progress">
+                        <div class="stat-fill" style="width: ${percentage}%; background-color: ${color};"></div>
+                    </div>
+                    <div class="stat-value">${d.teamValue.toFixed(1)}</div>
+                `;
+            });
+        }
+
+        // 전체 선택 해제 함수
+        function clearSelection() {
+            selectedPlayers = [];
+            updateSelectedLineup();
+            renderPlayerList();
+            updateRadarChart();
+            updateAnalysis();
+        }
+
+        // 전역 함수로 선수 제거 (HTML onclick에서 사용)
+        window.removePlayer = removePlayer;
+        window.clearSelection = clearSelection;
+
+        // 데이터 로드 및 초기화
+        loadData();
+
+        function loadData() {
+            d3.csv("nba_24_25.csv").then(data => {
+                allPlayers = data.map(d => ({
+                    ...d,
+                    PTS: +d.PTS,
+                    G: +d.G,
+                    AST: +d.AST,
+                    TRB: +d.TRB,
+                    STL: +d.STL,
+                    BLK: +d.BLK,
+                    MP: +d.MP,
+                    // 경기당 평균 계산
+                    pts: +(d.PTS / d.G).toFixed(1),
+                    ast: +(d.AST / d.G).toFixed(1),
+                    trb: +(d.TRB / d.G).toFixed(1),
+                    stl: +(d.STL / d.G).toFixed(1),
+                    blk: +(d.BLK / d.G).toFixed(1),
+                    avgMP: +(d.MP / d.G).toFixed(1)
+                })).filter(d => d.Pos && d.PTS > 0 && d.G > 20)  // 충분한 출전
+                .sort((a, b) => b.pts - a.pts);  // 득점순 정렬
+
+                filteredPlayers = [...allPlayers];
+                
+                console.log("Loaded players:", allPlayers.length);
+                
+                calculateLeagueAverage();  // 리그 평균 계산
+                setupTeamSelect();
+                renderPlayerList();
+                setupRadarChart();
+            }).catch(error => {
+                console.error("CSV 로드 실패:", error);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA 상대 라인업 기반 최적 라인업 추천</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 400px;
+        }
+
+        .right-panel {
+            flex: 1;
+            min-width: 600px;
+        }
+
+        .opponent-setup {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .opponent-setup h3 {
+            margin: 0 0 15px 0;
+            color: #856404;
+            text-align: center;
+        }
+
+        .team-selection {
+            margin-bottom: 15px;
+        }
+
+        .team-selection label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .team-selection select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .position-selectors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .position-group {
+            margin-bottom: 10px;
+        }
+
+        .position-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .position-group select {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .position-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .pos-PG { background-color: #FF6B6B; }
+        .pos-SG { background-color: #4ECDC4; }
+        .pos-SF { background-color: #45B7D1; }
+        .pos-PF { background-color: #96CEB4; }
+        .pos-C { background-color: #FFEAA7; color: #333; }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .analyze-btn:hover {
+            background: #0056b3;
+        }
+
+        .analyze-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .opponent-analysis {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .opponent-analysis h4 {
+            margin: 0 0 10px 0;
+            color: #721c24;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .recommendation-panel {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .recommendation-panel h3 {
+            margin: 0 0 15px 0;
+            color: #155724;
+            text-align: center;
+        }
+
+        .strategy-summary {
+            background: #e2e3e5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .strategy-summary h5 {
+            margin: 0 0 10px 0;
+            color: #383d41;
+        }
+
+        .recommended-lineup {
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .lineup-header {
+            background: #28a745;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .player-recommendation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .player-recommendation:last-child {
+            border-bottom: none;
+        }
+
+        .player-recommendation:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .player-stats {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .recommendation-reason {
+            font-size: 11px;
+            color: #28a745;
+            margin-left: 15px;
+            max-width: 150px;
+        }
+
+        .matchup-chart {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .matchup-comparison {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .our-team {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .opponent-team {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .advantage {
+            color: #28a745;
+            font-size: 12px;
+        }
+
+        .disadvantage {
+            color: #dc3545;
+            font-size: 12px;
+        }
+
+        .neutral {
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        .radar-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .radar-chart {
+            margin: 0 auto;
+        }
+
+        .radar-path {
+            fill: rgba(54, 162, 235, 0.2);
+            stroke: rgba(54, 162, 235, 1);
+            stroke-width: 2;
+        }
+
+        .radar-path.opponent {
+            fill: rgba(255, 99, 132, 0.2);
+            stroke: rgba(255, 99, 132, 1);
+            stroke-width: 2;
+        }
+
+        .radar-axis {
+            stroke: #999;
+            stroke-width: 1;
+        }
+
+        .radar-grid {
+            stroke: #ddd;
+            stroke-width: 1;
+            fill: none;
+        }
+
+        .radar-label {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #333;
+            text-anchor: middle;
+        }
+
+        .legend {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+
+        .legend-line {
+            display: inline-block;
+            width: 20px;
+            height: 3px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        .our-lineup { background-color: rgba(54, 162, 235, 1); }
+        .opponent-lineup { background-color: rgba(255, 99, 132, 1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏀 NBA 상대 라인업 기반 최적 라인업 추천</h1>
+        
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="opponent-setup">
+                    <h3>라인업 설정</h3>
+                    
+                    <div class="team-selection">
+                        <label>우리팀 선택</label>
+                        <select id="ourTeamSelect">
+                            <option value="">팀 선택</option>
+                        </select>
+                    </div>
+                    
+                    <div class="team-selection">
+                        <label>상대팀 선택 (빠른 설정)</label>
+                        <select id="opponentTeamSelect">
+                            <option value="">팀 선택 (선택사항)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: bold;">상대팀 라인업 (5명 선택)</label>
+                        <input type="text" id="playerSearch" placeholder="선수 이름으로 검색..." style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 3px;">
+                        <div id="playerPool" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; background: white;"></div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <h5 style="margin: 0 0 10px 0; color: #856404;">선택된 상대 라인업 (<span id="opponentCount">0</span>/5)</h5>
+                        <div id="selectedOpponents" style="min-height: 50px; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 5px;"></div>
+                    </div>
+                    
+                    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeMatchup()">상대 분석 및 라인업 추천</button>
+                </div>
+                
+                <div class="opponent-analysis" id="opponentAnalysis" style="display: none;">
+                    <h4>🔍 상대팀 분석</h4>
+                    <div class="analysis-grid" id="opponentStats"></div>
+                    <div id="opponentStrengths"></div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="recommendation-panel" id="recommendationPanel" style="display: none;">
+                    <h3>💡 추천 라인업</h3>
+                    
+                    <div class="strategy-summary">
+                        <h5>전략 요약</h5>
+                        <div id="strategySummary">상대팀을 먼저 설정해주세요.</div>
+                    </div>
+                    
+                    <div class="recommended-lineup">
+                        <div class="lineup-header">추천 라인업</div>
+                        <div id="recommendedPlayers"></div>
+                    </div>
+                    
+                    <div class="matchup-chart">
+                        <h5>매치업 비교</h5>
+                        <div id="matchupComparison"></div>
+                    </div>
+                </div>
+                
+                <div class="radar-container" id="radarContainer" style="display: none;">
+                    <h4>라인업 능력치 비교</h4>
+                    <svg class="radar-chart" id="comparisonRadar"></svg>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <span class="legend-line our-lineup"></span>
+                            우리 추천 라인업
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-line opponent-lineup"></span>
+                            상대팀 라인업
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // D3.js 스타일 전역 설정
+        const radarSize = 350;
+        const radarRadius = 120;
+        const radarCenter = radarSize / 2;
+
+        // 전역 변수
+        let allPlayers = [];
+        let opponentLineup = [];
+        let recommendedLineup = [];
+        let ourTeamPlayers = []; // 우리팀 선수풀
+        let filteredPlayers = []; // 검색 필터링된 선수들
+
+        // 능력치 정의
+        const stats = [
+            { key: 'pts', label: '득점', max: 35 },
+            { key: 'ast', label: '어시스트', max: 12 },
+            { key: 'trb', label: '리바운드', max: 15 },
+            { key: 'stl', label: '스틸', max: 3 },
+            { key: 'blk', label: '블록', max: 3 }
+        ];
+
+
+        // 선택자 설정
+        function setupSelectors() {
+            // 팀 목록 생성
+            const teams = [...new Set(allPlayers.map(d => d.Team))].sort();
+            
+            // 우리팀 선택 드롭다운
+            const ourTeamSelect = d3.select("#ourTeamSelect");
+            ourTeamSelect.selectAll("option.team-option")
+                .data(teams)
+                .join("option")
+                .attr("class", "team-option")
+                .attr("value", d => d)
+                .text(d => d);
+            
+            // 우리팀 선택 이벤트
+            ourTeamSelect.on("change", function() {
+                ourTeam = this.value;
+                if (ourTeam) {
+                    ourTeamPlayers = allPlayers.filter(d => d.Team === ourTeam);
+                    console.log("Our team players:", ourTeamPlayers.length);
+                } else {
+                    ourTeamPlayers = [];
+                }
+                updateAnalyzeButton();
+            });
+            
+            // 상대팀 선택 드롭다운
+            const opponentTeamSelect = d3.select("#opponentTeamSelect");
+            opponentTeamSelect.selectAll("option.team-option")
+                .data(teams)
+                .join("option")
+                .attr("class", "team-option")
+                .attr("value", d => d)
+                .text(d => d);
+            
+            // 상대팀 선택 이벤트 (D3 방식으로 복원)
+            opponentTeamSelect.on("change", function() {
+                const selectedTeam = this.value;
+                console.log("상대팀 드롭다운 변경:", selectedTeam);
+                
+                if (selectedTeam) {
+                    console.log("팀이 선택됨 - 필터링 시작");
+                    
+                    // 1. 검색창 초기화
+                    d3.select("#playerSearch").property("value", "");
+                    
+                    // 2. 해당 팀 선수들로 필터링
+                    filteredPlayers = allPlayers.filter(d => d.Team === selectedTeam);
+                    console.log("필터링 완료:", filteredPlayers.length, "명");
+                    console.log("팀 선수들:", filteredPlayers.map(p => p.Player));
+                    
+                    // 3. 상위 5명 자동 선택
+                    const top5 = filteredPlayers
+                        .sort((a, b) => b.avgMP - a.avgMP)
+                        .slice(0, 5);
+                    opponentLineup = [...top5];
+                    console.log("자동 선택된 5명:", opponentLineup.map(p => p.Player));
+                    
+                    // 4. UI 업데이트
+                    updateSelectedOpponents();
+                    renderPlayerPool();
+                    updateAnalyzeButton();
+                    
+                } else {
+                    console.log("팀 선택 해제 - 전체 표시");
+                    opponentLineup = [];
+                    filteredPlayers = [...allPlayers];
+                    updateSelectedOpponents();
+                    renderPlayerPool();
+                    updateAnalyzeButton();
+                }
+            });
+
+            // 초기 선수풀 설정 (D3 방식)
+            filteredPlayers = [...allPlayers];
+            renderPlayerPool();
+            
+            // 검색 기능 (D3 방식)
+            d3.select("#playerSearch").on("input", function() {
+                const searchTerm = this.value.toLowerCase();
+                const selectedTeam = d3.select("#opponentTeamSelect").property("value");
+                
+                console.log("검색어:", searchTerm, "선택된 팀:", selectedTeam);
+                
+                // 기본 필터
+                let baseFilter;
+                if (selectedTeam) {
+                    baseFilter = allPlayers.filter(d => d.Team === selectedTeam);
+                } else {
+                    baseFilter = [...allPlayers];
+                }
+                
+                // 검색어 필터링
+                if (searchTerm) {
+                    filteredPlayers = baseFilter.filter(player => 
+                        player.Player.toLowerCase().includes(searchTerm)
+                    );
+                } else {
+                    filteredPlayers = baseFilter;
+                }
+                
+                renderPlayerPool();
+            });
+        }
+
+        // 선수풀 렌더링
+        function renderPlayerPool() {
+            const playerPool = d3.select("#playerPool");
+            
+            const playerItems = playerPool.selectAll(".player-item")
+                .data(filteredPlayers)
+                .join("div")
+                .attr("class", "player-item")
+                .style("padding", "8px")
+                .style("border-bottom", "1px solid #eee")
+                .style("cursor", "pointer")
+                .style("transition", "background 0.2s")
+                .classed("selected", d => opponentLineup.some(p => p.Player === d.Player));
+
+            playerItems.html(d => `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span class="position-badge pos-${d.Pos}">${d.Pos}</span>
+                        <strong>${d.Player}</strong> (${d.Team})
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        ${d.pts}pts ${d.ast}ast ${d.trb}reb
+                    </div>
+                </div>
+            `);
+
+            // 클릭 이벤트
+            playerItems.on("click", function(event, d) {
+                const isSelected = opponentLineup.some(p => p.Player === d.Player);
+                
+                if (isSelected) {
+                    // 선택 해제
+                    opponentLineup = opponentLineup.filter(p => p.Player !== d.Player);
+                } else {
+                    // 선택 추가 (최대 5명)
+                    if (opponentLineup.length < 5) {
+                        opponentLineup.push(d);
+                    } else {
+                        alert("최대 5명까지만 선택할 수 있습니다.");
+                        return;
+                    }
+                }
+                
+                updateSelectedOpponents();
+                renderPlayerPool(); // 선택 상태 업데이트
+                updateAnalyzeButton();
+            });
+
+            // 호버 효과
+            playerItems
+                .on("mouseover", function() {
+                    d3.select(this).style("background", "#f0f8ff");
+                })
+                .on("mouseout", function() {
+                    const isSelected = d3.select(this).classed("selected");
+                    d3.select(this).style("background", isSelected ? "#e3f2fd" : "white");
+                });
+
+            // 선택된 항목 배경색
+            playerItems.filter(d => opponentLineup.some(p => p.Player === d.Player))
+                .style("background", "#e3f2fd");
+        }
+
+        // 선택된 상대 라인업 업데이트
+        function updateSelectedOpponents() {
+            d3.select("#opponentCount").text(opponentLineup.length);
+            
+            const selectedEl = d3.select("#selectedOpponents");
+            
+            if (opponentLineup.length === 0) {
+                selectedEl.html('<div style="color: #666; font-style: italic;">선수를 선택해주세요</div>');
+                return;
+            }
+            
+            const selectedItems = selectedEl.selectAll(".selected-opponent")
+                .data(opponentLineup)
+                .join("div")
+                .attr("class", "selected-opponent")
+                .style("display", "flex")
+                .style("justify-content", "space-between")
+                .style("align-items", "center")
+                .style("padding", "5px 0")
+                .style("border-bottom", "1px solid #ffeaa7");
+
+            selectedItems.html(d => `
+                <div>
+                    <span class="position-badge pos-${d.Pos}">${d.Pos}</span>
+                    <strong>${d.Player}</strong> (${d.Team})
+                    <span style="color: #666; font-size: 12px;"> - ${d.pts}pts ${d.ast}ast ${d.trb}reb</span>
+                </div>
+                <button onclick="removeOpponent('${d.Player}')" style="background: #dc3545; color: white; border: none; border-radius: 3px; padding: 2px 6px; font-size: 12px; cursor: pointer;">×</button>
+            `);
+        }
+
+        // 상대 선수 제거
+        function removeOpponent(playerName) {
+            opponentLineup = opponentLineup.filter(p => p.Player !== playerName);
+            updateSelectedOpponents();
+            renderPlayerPool();
+            updateAnalyzeButton();
+        }
+
+        // 팀별 라인업 자동 설정
+        function fillTeamLineup(teamName) {
+            const teamPlayers = allPlayers.filter(d => d.Team === teamName);
+            
+            ['PG', 'SG', 'SF', 'PF', 'C'].forEach(position => {
+                const positionPlayer = teamPlayers
+                    .filter(d => d.Pos === position)
+                    .sort((a, b) => b.avgMP - a.avgMP)[0]; // 출전시간 기준 최고 선수
+                
+                if (positionPlayer) {
+                    d3.select(`#opponent-${position}`)
+                        .property("value", positionPlayer.Player);
+                }
+            });
+            
+            updateAnalyzeButton();
+        }
+
+        // 분석 버튼 활성화 체크
+        function updateAnalyzeButton() {
+            const analyzeBtn = d3.select("#analyzeBtn");
+            
+            if (!ourTeam) {
+                analyzeBtn.property("disabled", true)
+                    .text("우리팀을 먼저 선택해주세요");
+            } else if (opponentLineup.length !== 5) {
+                analyzeBtn.property("disabled", true)
+                    .text(`상대 선수 선택 (${opponentLineup.length}/5)`);
+            } else {
+                analyzeBtn.property("disabled", false)
+                    .text("상대 분석 및 라인업 추천");
+            }
+        }
+
+        // 매치업 분석 메인 함수
+        function analyzeMatchup() {
+            if (!ourTeam) {
+                alert("우리팀을 먼저 선택해주세요.");
+                return;
+            }
+            
+            if (opponentLineup.length !== 5) {
+                alert("상대팀 5명의 선수를 모두 선택해주세요.");
+                return;
+            }
+            
+            // 상대팀 분석
+            analyzeOpponent();
+            
+            // 라인업 추천
+            recommendLineup();
+            
+            // UI 업데이트
+            showAnalysis();
+            setupComparisonRadar();
+        }
+
+        // 상대팀 분석
+        function analyzeOpponent() {
+            const opponentStats = {
+                avgPts: d3.mean(opponentLineup, d => d.pts),
+                avgAst: d3.mean(opponentLineup, d => d.ast),
+                avgTrb: d3.mean(opponentLineup, d => d.trb),
+                avgStl: d3.mean(opponentLineup, d => d.stl),
+                avgBlk: d3.mean(opponentLineup, d => d.blk),
+                avgThreeP: d3.mean(opponentLineup, d => d.threeP),
+                avgFG: d3.mean(opponentLineup, d => d.fieldGoal)
+            };
+
+            // 상대팀 분석 UI 업데이트
+            const statsGrid = d3.select("#opponentStats");
+            
+            const statCards = [
+                { label: "평균 득점", value: opponentStats.avgPts.toFixed(1) },
+                { label: "평균 어시스트", value: opponentStats.avgAst.toFixed(1) },
+                { label: "평균 리바운드", value: opponentStats.avgTrb.toFixed(1) },
+                { label: "3점 성공률", value: (opponentStats.avgThreeP * 100).toFixed(1) + "%" }
+            ];
+
+            statsGrid.selectAll(".stat-card")
+                .data(statCards)
+                .join("div")
+                .attr("class", "stat-card")
+                .html(d => `
+                    <div class="stat-value">${d.value}</div>
+                    <div class="stat-label">${d.label}</div>
+                `);
+
+            // 상대팀 강점 분석
+            const strengths = [];
+            if (opponentStats.avgPts > 20) strengths.push("강력한 득점력");
+            if (opponentStats.avgAst > 6) strengths.push("뛰어난 플레이메이킹");
+            if (opponentStats.avgTrb > 8) strengths.push("리바운드 우위");
+            if (opponentStats.avgThreeP > 0.38) strengths.push("3점 슈팅 위협");
+            if (opponentStats.avgBlk > 1.5) strengths.push("블록샷 수비");
+
+            d3.select("#opponentStrengths")
+                .html(`<strong>주요 강점:</strong> ${strengths.join(", ") || "균형잡힌 팀"}`);
+        }
+
+        // 라인업 추천 알고리즘 (포지션 제약 완전 제거)
+        function recommendLineup() {
+            console.log("=== 라인업 추천 시작 ===");
+            
+            const opponentStats = {
+                avgPts: d3.mean(opponentLineup, d => d.pts),
+                avgAst: d3.mean(opponentLineup, d => d.ast),
+                avgTrb: d3.mean(opponentLineup, d => d.trb),
+                avgStl: d3.mean(opponentLineup, d => d.stl),
+                avgBlk: d3.mean(opponentLineup, d => d.blk),
+                avgThreeP: d3.mean(opponentLineup, d => d.threeP)
+            };
+
+            console.log("상대팀 평균 스탯:", opponentStats);
+
+            // 각 선수에게 점수 부여
+            const scoredPlayers = ourTeamPlayers.map(player => {
+                let score = 0;
+                let reasons = [];
+
+                // 기본 능력치 점수 (가중치 적용)
+                score += player.pts * 1.5; // 득점
+                score += player.ast * 2.0;  // 어시스트
+                score += player.trb * 1.5;  // 리바운드
+                score += player.stl * 3.0;  // 스틸
+                score += player.blk * 3.0;  // 블록
+
+                // 상대방 특성에 따른 전략적 보너스
+                if (opponentStats.avgPts > 20) {
+                    if (player.stl > 1.0) {
+                        score += 15;
+                        reasons.push("수비력");
+                    }
+                    if (player.blk > 1.0) {
+                        score += 12;
+                        reasons.push("블록샷");
+                    }
+                }
+
+                if (opponentStats.avgThreeP > 0.38) {
+                    if (player.stl > 1.0) {
+                        score += 18;
+                        reasons.push("페리미터 수비");
+                    }
+                }
+
+                if (opponentStats.avgTrb > 8) {
+                    if (player.trb > 6) {
+                        score += 15;
+                        reasons.push("리바운드 대응");
+                    }
+                }
+
+                if (opponentStats.avgAst > 6) {
+                    if (player.stl > 1.2) {
+                        score += 12;
+                        reasons.push("플레이 차단");
+                    }
+                }
+
+                // 출전시간 고려 (주전급 우대)
+                if (player.avgMP > 30) {
+                    score += 8;
+                    reasons.push("주전급");
+                } else if (player.avgMP > 20) {
+                    score += 4;
+                    reasons.push("로테이션");
+                }
+
+                // 3점 슈팅 능력
+                if (player.threeP > 0.35) {
+                    score += 5;
+                    reasons.push("3점슈팅");
+                }
+
+                return {
+                    ...player,
+                    matchupScore: score,
+                    reasons: reasons
+                };
+            });
+
+            // 점수 순으로 정렬하여 상위 5명 선택 (포지션 완전 무시)
+            recommendedLineup = scoredPlayers
+                .sort((a, b) => b.matchupScore - a.matchupScore)
+                .slice(0, 5);
+                
+            console.log("추천 라인업 (점수 기준):");
+            recommendedLineup.forEach((player, index) => {
+                console.log(`${index + 1}. ${player.Player} (${player.Pos}) - ${player.matchupScore.toFixed(1)}점 - ${player.reasons.join(", ")}`);
+            });
+
+            // 포지션 분포 확인
+            const positionCount = {};
+            recommendedLineup.forEach(player => {
+                positionCount[player.Pos] = (positionCount[player.Pos] || 0) + 1;
+            });
+            console.log("추천 라인업 포지션 분포:", positionCount);
+            
+            console.log("=== 라인업 추천 완료 ===");
+        }
+
+        // 분석 결과 표시
+        function showAnalysis() {
+            // 패널 표시
+            d3.select("#opponentAnalysis").style("display", "block");
+            d3.select("#recommendationPanel").style("display", "block");
+            d3.select("#radarContainer").style("display", "block");
+
+            // 전략 요약
+            const strategy = generateStrategy();
+            d3.select("#strategySummary").html(strategy);
+
+            // 추천 라인업 표시
+            const playersHtml = recommendedLineup.map(player => `
+                <div class="player-recommendation">
+                    <div class="player-info">
+                        <div class="player-name">
+                            <span class="position-badge pos-${player.Pos}">${player.Pos}</span>
+                            ${player.Player}
+                        </div>
+                        <div class="player-stats">
+                            ${player.pts}pts ${player.ast}ast ${player.trb}reb | ${player.Team}
+                        </div>
+                    </div>
+                    <div class="recommendation-reason">
+                        ${player.reasons.slice(0, 2).join(", ")}
+                    </div>
+                </div>
+            `).join("");
+
+            d3.select("#recommendedPlayers").html(playersHtml);
+
+            // 매치업 비교
+            showMatchupComparison();
+        }
+
+        // 전략 생성
+        function generateStrategy() {
+            const opponentStats = {
+                avgPts: d3.mean(opponentLineup, d => d.pts),
+                avgAst: d3.mean(opponentLineup, d => d.ast),
+                avgTrb: d3.mean(opponentLineup, d => d.trb),
+                avgThreeP: d3.mean(opponentLineup, d => d.threeP)
+            };
+
+            let strategy = "";
+
+            if (opponentStats.avgPts > 20) {
+                strategy += "• <strong>수비 강화:</strong> 상대의 강한 득점력에 대응하여 수비형 선수들로 구성<br>";
+            }
+
+            if (opponentStats.avgThreeP > 0.38) {
+                strategy += "• <strong>페리미터 수비:</strong> 3점 슈팅을 차단할 수 있는 외곽 수비수 배치<br>";
+            }
+
+            if (opponentStats.avgTrb > 8) {
+                strategy += "• <strong>리바운드 경쟁:</strong> 리바운드 우위를 위한 장신 선수들 투입<br>";
+            }
+
+            if (opponentStats.avgAst > 6) {
+                strategy += "• <strong>플레이 차단:</strong> 상대 플레이메이킹을 방해할 수 있는 스틸 전문가 활용<br>";
+            }
+
+            return strategy || "• <strong>균형 라인업:</strong> 상대팀에 특별한 약점이 없어 밸런스 잡힌 구성으로 대응";
+        }
+
+        // 매치업 비교 표시
+        function showMatchupComparison() {
+            const ourStats = {
+                pts: d3.mean(recommendedLineup, d => d.pts),
+                ast: d3.mean(recommendedLineup, d => d.ast),
+                trb: d3.mean(recommendedLineup, d => d.trb),
+                stl: d3.mean(recommendedLineup, d => d.stl),
+                blk: d3.mean(recommendedLineup, d => d.blk)
+            };
+
+            const opponentStats = {
+                pts: d3.mean(opponentLineup, d => d.pts),
+                ast: d3.mean(opponentLineup, d => d.ast),
+                trb: d3.mean(opponentLineup, d => d.trb),
+                stl: d3.mean(opponentLineup, d => d.stl),
+                blk: d3.mean(opponentLineup, d => d.blk)
+            };
+
+            const comparisons = [
+                { stat: "득점", our: ourStats.pts, opponent: opponentStats.pts },
+                { stat: "어시스트", our: ourStats.ast, opponent: opponentStats.ast },
+                { stat: "리바운드", our: ourStats.trb, opponent: opponentStats.trb },
+                { stat: "스틸", our: ourStats.stl, opponent: opponentStats.stl },
+                { stat: "블록", our: ourStats.blk, opponent: opponentStats.blk }
+            ];
+
+            const comparisonHtml = comparisons.map(comp => {
+                const diff = comp.our - comp.opponent;
+                const advantage = Math.abs(diff) < 0.5 ? "neutral" : (diff > 0 ? "advantage" : "disadvantage");
+                const symbol = advantage === "advantage" ? "↑" : (advantage === "disadvantage" ? "↓" : "=");
+
+                return `
+                    <div class="matchup-comparison">
+                        <span class="our-team">${comp.our.toFixed(1)}</span>
+                        <span class="${advantage}">${comp.stat} ${symbol}</span>
+                        <span class="opponent-team">${comp.opponent.toFixed(1)}</span>
+                    </div>
+                `;
+            }).join("");
+
+            d3.select("#matchupComparison").html(comparisonHtml);
+        }
+
+        // 비교 레이더 차트 설정
+        function setupComparisonRadar() {
+            const svg = d3.select("#comparisonRadar")
+                .attr("width", radarSize)
+                .attr("height", radarSize);
+
+            // 기존 차트 지우기
+            svg.selectAll("*").remove();
+
+            const chartGroup = svg.append("g")
+                .attr("transform", `translate(${radarCenter}, ${radarCenter})`);
+
+            // 그리드 원 그리기
+            const gridLevels = 5;
+            for (let i = 1; i <= gridLevels; i++) {
+                chartGroup.append("circle")
+                    .attr("class", "radar-grid")
+                    .attr("r", (radarRadius / gridLevels) * i);
+            }
+
+            // 축 그리기
+            const angleSlice = (Math.PI * 2) / stats.length;
+            
+            stats.forEach((stat, i) => {
+                const angle = angleSlice * i - Math.PI / 2;
+                const x = Math.cos(angle) * radarRadius;
+                const y = Math.sin(angle) * radarRadius;
+                
+                // 축선
+                chartGroup.append("line")
+                    .attr("class", "radar-axis")
+                    .attr("x1", 0)
+                    .attr("y1", 0)
+                    .attr("x2", x)
+                    .attr("y2", y);
+                
+                // 레이블
+                const labelX = Math.cos(angle) * (radarRadius + 25);
+                const labelY = Math.sin(angle) * (radarRadius + 25);
+                
+                chartGroup.append("text")
+                    .attr("class", "radar-label")
+                    .attr("x", labelX)
+                    .attr("y", labelY)
+                    .attr("dy", "0.35em")
+                    .text(stat.label);
+            });
+
+            // 데이터 패스 생성
+            function createRadarPath(players, className) {
+                const values = {
+                    pts: d3.mean(players, d => d.pts),
+                    ast: d3.mean(players, d => d.ast),
+                    trb: d3.mean(players, d => d.trb),
+                    stl: d3.mean(players, d => d.stl),
+                    blk: d3.mean(players, d => d.blk)
+                };
+
+                let pathData = "";
+                stats.forEach((stat, i) => {
+                    const angle = angleSlice * i - Math.PI / 2;
+                    const value = Math.min(values[stat.key], stat.max);
+                    const radius = (value / stat.max) * radarRadius;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        pathData += `M ${x} ${y}`;
+                    } else {
+                        pathData += ` L ${x} ${y}`;
+                    }
+                });
+                pathData += " Z";
+
+                chartGroup.append("path")
+                    .attr("class", `radar-path ${className}`)
+                    .attr("d", pathData)
+                    .style("opacity", 0)
+                    .transition()
+                    .duration(1000)
+                    .style("opacity", 1);
+            }
+
+            // 상대팀 라인업
+            createRadarPath(opponentLineup, "opponent");
+            
+            // 우리팀 추천 라인업
+            createRadarPath(recommendedLineup, "");
+        }
+
+        // 전역 함수
+        window.analyzeMatchup = analyzeMatchup;
+        window.removeOpponent = removeOpponent;
+
+        // 데이터 로드 및 초기화
+        loadData();
+
+        function loadData() {
+            d3.csv("data/nba_24_25.csv").then(data => {
+            allPlayers = data.map(d => ({
+                ...d,
+                PTS: +d.PTS,
+                G: +d.G,
+                AST: +d.AST,
+                TRB: +d.TRB,
+                STL: +d.STL,
+                BLK: +d.BLK,
+                MP: +d.MP,
+                threeP: +d['3P%'],
+                freeThrow: +d['FT%'],
+                fieldGoal: +d['FG%'],
+                // 경기당 평균 계산
+                pts: +(d.PTS / d.G).toFixed(1),
+                ast: +(d.AST / d.G).toFixed(1),
+                trb: +(d.TRB / d.G).toFixed(1),
+                stl: +(d.STL / d.G).toFixed(1),
+                blk: +(d.BLK / d.G).toFixed(1),
+                avgMP: +(d.MP / d.G).toFixed(1)
+            })).filter(d => d.Pos && d.PTS > 0 && d.G > 20);
+
+            // 우리팀 선수들 필터링 (초기에는 비어있음)
+            ourTeamPlayers = [];
+            
+            console.log("Loaded players:", allPlayers.length);
+            
+            setupSelectors();
+            }).catch(error => {
+                console.error("CSV 로드 실패:", error);
+            });
+        }
+    </script>
+</body>
+</html>
