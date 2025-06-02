@@ -20,7 +20,7 @@ An simple interactive visualization system for NBA 24-25 season strategic analys
 
 | Task | Description | Demo Link |
 |------|-------------|-----------|
-| **Task 1** | Position-based Scoring Analysis | [View Demo](https://yourusername.github.io/nba-visualization/task1.html) |
-| **Task 2** | Player Filtering & Discovery Based On 3p% & FT%| [View Demo](https://yourusername.github.io/nba-visualization/task2.html) |
-| **Task 3** | Lineup Composition Analysis | [View Demo](https://yourusername.github.io/nba-visualization/task3.html) |
-| **Task 4** | Strategic Matchup Recommendations (Rule-based) | [View Demo](https://yourusername.github.io/nba-visualization/task4.html) |
+| **Task 1** | Position-based Scoring Analysis | [View Demo](https://yourusername.github.io/infovis_nba_stat/task1.html) |
+| **Task 2** | Player Filtering & Discovery Based On 3p% & FT%| [View Demo](https://yourusername.github.io/infovis_nba_stat/task2.html) |
+| **Task 3** | Lineup Composition Analysis | [View Demo](https://yourusername.github.io/infovis_nba_stat/task3.html) |
+| **Task 4** | Strategic Matchup Recommendations (Rule-based) | [View Demo](https://yourusername.github.io/infovis_nba_stat/task4.html) |
